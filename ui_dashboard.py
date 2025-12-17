@@ -2,7 +2,7 @@ import streamlit as st
 from datetime import datetime
 import plotly.graph_objects as go
 from streamlit_autorefresh import st_autorefresh
-from api.market_data import fetch_candles, fetch_candles_htf
+from api.market_data import fetch_coinbase_candles, fetch_candles_htf
 from indicators.ema import add_ema
 from strategy.context import build_context, build_htf_context
 from strategy.advisor import advisor_logic
@@ -45,16 +45,20 @@ st.markdown("<div class='big-font'>📊 Crypto Trading Advisor</div>", unsafe_al
 st.caption(f"LTF: {INTERVAL} • HTF: {HTF_INTERVAL} • Auto-refresh enabled")
 
 # ---------------- FETCH LTF DATA ----------------
-df = fetch_candles()
+df = fetch_coinbase_candles(
+    symbol="BTC-USD",
+    interval=INTERVAL,
+    limit=200
+)
 
-if df is None or df.empty:
+if df is None:
     st.stop()
 
 df = add_ema(df, EMA_FAST, EMA_SLOW)
 ctx = build_context(df)
 
 # ---------------- FETCH HTF DATA ----------------
-df_htf = fetch_candles_htf("BTCUSDT", HTF_INTERVAL)
+df_htf = fetch_candles_htf("BTC-USDT", HTF_INTERVAL)
 df_htf = add_ema(df_htf, HTF_EMA_FAST, HTF_EMA_SLOW)
 htf = build_htf_context(df_htf)
 
@@ -68,7 +72,7 @@ if adv["action"].startswith("TAKE"):
     direction = "LONG" if "LONG" in adv["action"] else "SHORT"
 
     log_trade(
-        symbol="BTCUSDT",
+        symbol="BTC-USDT",
         ltf=INTERVAL,
         htf=HTF_INTERVAL,
         direction=direction,

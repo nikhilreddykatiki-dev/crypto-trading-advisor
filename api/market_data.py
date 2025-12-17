@@ -2,57 +2,42 @@ import requests
 import pandas as pd
 import streamlit as st
 
-def fetch_candles(symbol="BTCUSDT", interval="3m", limit=200):
-    url = "https://api.binance.com/api/v3/klines"
-
-    params = {
-        "symbol": symbol,
-        "interval": interval,
-        "limit": limit
+def fetch_coinbase_candles(symbol="BTC-USD", interval="3m", limit=200):
+    GRANULARITY_MAP = {
+        "1m": 60,
+        "3m": 180,
+        "5m": 300,
+        "15m": 900
     }
 
+    granularity = GRANULARITY_MAP.get(interval, 180)
+
+    url = f"https://api.exchange.coinbase.com/products/{symbol}/candles"
+
     headers = {
-        "User-Agent": "Mozilla/5.0"
+        "User-Agent": "Mozilla/5.0",
+        "Accept": "application/json"
     }
 
     try:
-        r = requests.get(url, params=params, headers=headers, timeout=10)
+        r = requests.get(url, headers=headers, timeout=10)
         r.raise_for_status()
         data = r.json()
 
-        df = pd.DataFrame(data, columns=[
-            "open_time","open","high","low","close","volume",
-            "close_time","qav","num_trades","tbbav","tbqav","ignore"
-        ])
+        if not data:
+            raise ValueError("Empty data")
+
+        df = pd.DataFrame(
+            data,
+            columns=["time", "low", "high", "open", "close", "volume"]
+        )
 
         df["close"] = df["close"].astype(float)
+        df["time"] = pd.to_datetime(df["time"], unit="s")
+
+        df = df.sort_values("time").tail(limit)
         return df
 
     except Exception as e:
-        st.error("⚠️ Market data temporarily unavailable. Retrying...")
+        st.error("⚠️ Coinbase market data unavailable")
         return None
-
-def fetch_candles_htf(symbol, interval, limit=200):
-    import requests
-    import pandas as pd
-
-    BINANCE_URL = "https://api.binance.com/api/v3/klines"
-    params = {
-        "symbol": symbol,
-        "interval": interval,
-        "limit": limit
-    }
-
-    r = requests.get(BINANCE_URL, params=params, timeout=10)
-    r.raise_for_status()
-    data = r.json()
-
-    df = pd.DataFrame(data, columns=[
-        "time","open","high","low","close","volume",
-        "ct","qav","trades","tb","tq","ignore"
-    ])
-
-    for col in ["open","high","low","close","volume"]:
-        df[col] = df[col].astype(float)
-
-    return df
