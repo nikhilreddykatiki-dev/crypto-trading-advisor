@@ -65,19 +65,56 @@ fig.add_candlestick(
 )
 fig.add_scatter(x=df["time"], y=df["ema_fast"], name="EMA 21")
 fig.add_scatter(x=df["time"], y=df["ema_slow"], name="EMA 34")
+# ===== Pullback zone (EMA21 band) =====
+ema = ctx["ema_fast"]
 
+fig.add_hrect(
+    y0=ema * 0.998,
+    y1=ema * 1.002,
+    fillcolor="rgba(255, 165, 0, 0.18)",
+    line_width=0,
+    layer="below"
+)
+
+
+# ===== Trade levels =====
 if adv["action"].startswith("TAKE"):
-    fig.add_hline(y=adv["entry"], line_color="blue")
-    fig.add_hline(y=adv["sl"], line_color="red")
-    fig.add_hline(y=adv["tp"], line_color="green")
+    fig.add_hline(
+        y=adv["entry"],
+        line_color="blue",
+        line_width=2,
+        annotation_text="Entry",
+        annotation_position="right"
+    )
 
-    log_trade(
-        "BTC-USD",
-        adv["action"],
-        adv["entry"],
-        adv["sl"],
-        adv["tp"],
-        adv["rr"]
+    fig.add_hline(
+        y=adv["sl"],
+        line_color="red",
+        line_width=2,
+        annotation_text="SL",
+        annotation_position="right"
+    )
+
+    fig.add_hline(
+        y=adv["tp"],
+        line_color="green",
+        line_width=2,
+        annotation_text="TP",
+        annotation_position="right"
+    )
+# ===== HTF conflict overlay =====
+if adv["action"].startswith("NO TRADE"):
+    fig.add_shape(
+        type="rect",
+        xref="paper",
+        yref="paper",
+        x0=0,
+        y0=0,
+        x1=1,
+        y1=1,
+        fillcolor="rgba(200, 200, 200, 0.15)",
+        line_width=0,
+        layer="above"
     )
 
 st.plotly_chart(fig, use_container_width=True)
