@@ -8,6 +8,13 @@ from strategy.context import build_context, build_htf_context
 from strategy.advisor import advisor
 from utils.journal import log_trade
 
+def get_last_closed_candle_time(df):
+    """
+    Returns the timestamp of the last fully closed candle.
+    """
+    return df.iloc[-2]["time"]
+
+
 # ================= PAGE CONFIG =================
 st.set_page_config(
     page_title="Crypto Trading Advisor",
@@ -56,10 +63,29 @@ if df is None or htf_df is None:
 df = add_ema(df)
 htf_df = add_ema(htf_df)
 
+# ================= SESSION STATE =================
+if "last_candle_time" not in st.session_state:
+    st.session_state.last_candle_time = None
+
+if "frozen_signal" not in st.session_state:
+    st.session_state.frozen_signal = None
+
 # ================= CONTEXT & ADVISOR =================
 ctx = build_context(df)
 htf = build_htf_context(htf_df)
-adv = advisor(ctx, htf, min_rr=min_rr)
+
+# ================= SIGNAL FREEZE LOGIC =================
+last_closed_time = get_last_closed_candle_time(df)
+
+# Only compute a NEW signal when a new candle closes
+if st.session_state.last_candle_time != last_closed_time:
+    adv = advisor(ctx, htf, min_rr=min_rr)
+
+    st.session_state.frozen_signal = adv
+    st.session_state.last_candle_time = last_closed_time
+else:
+    adv = st.session_state.frozen_signal
+
 
 # ================= ADVISOR PANEL (TOP) =================
 st.subheader("🧠 Advisor Status")
@@ -81,6 +107,11 @@ with col2:
         st.write("•", note)
 
 st.divider()
+
+st.caption(
+    f"🔒 Signal locked on candle close @ {st.session_state.last_candle_time.strftime('%H:%M:%S')}"
+)
+
 
 # ================= CHART =================
 fig = go.Figure()
