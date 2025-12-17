@@ -1,10 +1,9 @@
 from strategy.risk import calculate_trade
-from config import MIN_RR
 
-def advisor(ctx, htf):
+def advisor(ctx, htf, min_rr=2.0):
     notes = []
 
-    # 1️⃣ HTF vs LTF conflict
+    # 1️⃣ HTF conflict
     if ctx["trend"] != htf["htf_trend"]:
         notes.append(f"HTF ({htf['htf_trend'].upper()}) is in control")
         notes.append("Lower timeframe is against HTF")
@@ -13,7 +12,7 @@ def advisor(ctx, htf):
             "notes": notes
         }
 
-    # 2️⃣ Price not in pullback zone
+    # 2️⃣ No pullback
     if not ctx["near_ema"]:
         notes.append("HTF and LTF aligned")
         notes.append("Price not in EMA pullback zone")
@@ -22,15 +21,14 @@ def advisor(ctx, htf):
             "notes": notes
         }
 
-    # 3️⃣ Direction decision
+    # 3️⃣ Direction
     direction = "LONG" if ctx["trend"] == "bullish" else "SHORT"
-
     sl, tp, rr = calculate_trade(ctx["last_price"], direction)
 
     # 4️⃣ RR filter
-    if rr < MIN_RR:
+    if rr < min_rr:
         notes.append("Valid pullback detected")
-        notes.append(f"RR too low ({rr} < {MIN_RR})")
+        notes.append(f"RR too low ({rr} < {min_rr})")
         return {
             "action": "WAIT — RR TOO LOW",
             "notes": notes
