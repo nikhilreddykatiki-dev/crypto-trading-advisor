@@ -2,7 +2,7 @@ import streamlit as st
 from datetime import datetime
 import plotly.graph_objects as go
 from streamlit_autorefresh import st_autorefresh
-from api.market_data import fetch_coinbase_candles, fetch_candles_htf
+from api.market_data import fetch_coinbase_candles
 from indicators.ema import add_ema
 from strategy.context import build_context, build_htf_context
 from strategy.advisor import advisor_logic
