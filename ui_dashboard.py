@@ -22,6 +22,12 @@ st_autorefresh(interval=5_000, key="auto_refresh")
 with st.sidebar:
     st.header("⚙️ Controls")
 
+    symbol = st.selectbox(
+        "Symbol",
+        options=["BTC", "ETH", "SOL"],
+        index=0
+    )
+
     ltf_interval = st.selectbox(
         "Lower Timeframe",
         options=["1m", "3m", "5m"],
@@ -35,14 +41,13 @@ with st.sidebar:
         step=0.1,
         value=2.0
     )
-
 # ================= TITLE =================
-st.title("📊 Crypto Trading Advisor")
+st.title(f"📊 Crypto Trading Advisor — {symbol}")
 st.caption("HTF: 15m • Data: CryptoCompare • Auto refresh: 5s")
 
 # ================= DATA FETCH =================
-df = fetch_cryptocompare_candles("BTC", ltf_interval)
-htf_df = fetch_cryptocompare_candles("BTC", "15m")
+df = fetch_cryptocompare_candles(symbol, ltf_interval)
+htf_df = fetch_cryptocompare_candles(symbol, "15m")
 
 if df is None or htf_df is None:
     st.stop()
@@ -140,15 +145,15 @@ if adv["action"].startswith("TAKE"):
         annotation_position="right"
     )
 
-    # Log trade locally (not in git)
     log_trade(
-        symbol="BTC",
+        symbol=symbol,
         direction=adv["action"],
         entry=adv["entry"],
         sl=adv["sl"],
         tp=adv["tp"],
         rr=adv["rr"]
     )
+
 
 # ================= HTF BLOCK OVERLAY =================
 if adv["action"].startswith("NO TRADE"):
