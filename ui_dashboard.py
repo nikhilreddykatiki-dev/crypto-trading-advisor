@@ -31,12 +31,29 @@ ctx = build_context(df)
 htf = build_htf_context(htf_df)
 adv = advisor(ctx, htf)
 
-st.subheader("Advisor Notes")
-for n in adv["notes"]:
-    st.write("•", n)
+# ================= ADVISOR PANEL (TOP) =================
 
-st.metric("Last Price", ctx["last_price"])
-st.metric("Action", adv["action"])
+st.subheader("🧠 Advisor Status")
+
+col1, col2 = st.columns([1, 3])
+
+# Action badge
+with col1:
+    action = adv["action"]
+
+    if action.startswith("TAKE"):
+        st.success(action)
+    elif action.startswith("NO TRADE"):
+        st.error(action)
+    else:
+        st.warning(action)
+
+# Advisor notes
+with col2:
+    for n in adv["notes"]:
+        st.write("•", n)
+
+st.divider()
 
 fig = go.Figure()
 fig.add_candlestick(
