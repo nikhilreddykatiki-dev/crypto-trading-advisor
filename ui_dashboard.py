@@ -46,6 +46,10 @@ st.caption(f"LTF: {INTERVAL} • HTF: {HTF_INTERVAL} • Auto-refresh enabled")
 
 # ---------------- FETCH LTF DATA ----------------
 df = fetch_candles()
+
+if df is None or df.empty:
+    st.stop()
+
 df = add_ema(df, EMA_FAST, EMA_SLOW)
 ctx = build_context(df)
 
