@@ -1,42 +1,42 @@
 import requests
 import pandas as pd
 import streamlit as st
+from datetime import datetime
 
-def fetch_coinbase_candles(symbol="BTC-USD", interval="3m", limit=200):
-    GRANULARITY = {
-        "1m": 60,
-        "3m": 180,
-        "5m": 300,
-        "15m": 900
+def fetch_cryptocompare_candles(symbol="BTC", interval="3m", limit=200):
+    TF_MAP = {
+        "1m": ("histominute", 1),
+        "3m": ("histominute", 3),
+        "5m": ("histominute", 5),
+        "15m": ("histominute", 15),
     }
 
-    url = f"https://api.exchange.coinbase.com/products/{symbol}/candles"
-    params = {"granularity": GRANULARITY[interval]}
+    endpoint, aggregate = TF_MAP[interval]
+
+    url = f"https://min-api.cryptocompare.com/data/v2/{endpoint}"
+    params = {
+        "fsym": symbol,
+        "tsym": "USD",
+        "limit": limit,
+        "aggregate": aggregate
+    }
 
     try:
-        r = requests.get(
-            url,
-            params=params,
-            headers={"User-Agent": "Mozilla/5.0"},
-            timeout=10
-        )
+        r = requests.get(url, params=params, timeout=10)
         r.raise_for_status()
         data = r.json()
 
-        if not data:
-            raise ValueError("Empty data")
+        if data["Response"] != "Success":
+            raise ValueError("Bad response")
 
-        df = pd.DataFrame(
-            data,
-            columns=["time", "low", "high", "open", "close", "volume"]
-        )
+        rows = data["Data"]["Data"]
 
-        df["close"] = df["close"].astype(float)
+        df = pd.DataFrame(rows)
         df["time"] = pd.to_datetime(df["time"], unit="s")
-        df = df.sort_values("time").tail(limit)
+        df["close"] = df["close"].astype(float)
 
-        return df
+        return df[["time", "open", "high", "low", "close", "volumefrom"]]
 
     except Exception:
-        st.error("⚠️ Coinbase market data unavailable")
+        st.error("⚠️ Market data unavailable (CryptoCompare)")
         return None

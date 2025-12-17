@@ -1,8 +1,7 @@
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
 import plotly.graph_objects as go
-
-from api.market_data import fetch_coinbase_candles
+from api.market_data import fetch_cryptocompare_candles
 from indicators.ema import add_ema
 from strategy.context import build_context, build_htf_context
 from strategy.advisor import advisor
@@ -13,10 +12,14 @@ st.set_page_config(page_title="Crypto Trading Advisor", layout="wide")
 st_autorefresh(interval=20_000, key="refresh")
 
 st.title("📊 Crypto Trading Advisor")
-st.caption("LTF: 3m • HTF: 15m • Data: Coinbase")
+st.caption("LTF: 3m • HTF: 15m • Data: CryptoCompare")
 
-df = fetch_coinbase_candles("BTC-USD", LTF_INTERVAL)
-htf_df = fetch_coinbase_candles("BTC-USD", HTF_INTERVAL)
+df = fetch_cryptocompare_candles("BTC", LTF_INTERVAL)
+htf_df = fetch_cryptocompare_candles("BTC", HTF_INTERVAL)
+
+if df is None or htf_df is None:
+    st.stop()
+
 
 if df is None or htf_df is None:
     st.stop()
