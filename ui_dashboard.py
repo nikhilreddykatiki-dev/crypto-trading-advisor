@@ -111,42 +111,41 @@ if "signal_candle_index" not in st.session_state:
 if "signal_decision_time" not in st.session_state:
     st.session_state.signal_decision_time = None
 
+if "signal_decision_time" not in st.session_state:
+    st.session_state.signal_decision_time = None
+
+if "last_action" not in st.session_state:
+    st.session_state.last_action = None
+
 # ================= CONTEXT & ADVISOR =================
 ctx = build_context(df)
 htf = build_htf_context(htf_df)
 
-# ================= SIGNAL FREEZE + EXPIRY =================
+# ================= SIGNAL FREEZE (CORRECTED) =================
 last_closed_time = get_last_closed_candle_time(df)
-
-# Index of the last closed candle
 current_candle_index = df.index[-2]
 
-# New candle closed → compute new signal
+# New candle closed → recompute advisor
 if st.session_state.last_candle_time != last_closed_time:
-    adv = advisor(ctx, htf, min_rr=min_rr)
+    new_adv = advisor(ctx, htf, min_rr=min_rr)
 
-    st.session_state.frozen_signal = adv
     st.session_state.last_candle_time = last_closed_time
     st.session_state.signal_candle_index = current_candle_index
 
-    # 🔒 Lock signal decision time ONCE
-    st.session_state.signal_decision_time = last_closed_time
-    
-else:
-    adv = st.session_state.frozen_signal
+    # 🔒 LOCK decision time ONLY on NEW TAKE signal
+    if (
+        new_adv["action"].startswith("TAKE")
+        and st.session_state.last_action != new_adv["action"]
+    ):
+        st.session_state.frozen_signal = new_adv
+        st.session_state.signal_decision_time = last_closed_time
+        st.session_state.last_action = new_adv["action"]
 
-# Save snapshot for recap
-st.session_state.last_signal_snapshot = {
-    "time": st.session_state.last_candle_time,
-    "symbol": symbol,
-    "timeframe": ltf_interval,
-    "action": adv["action"],
-    "entry": adv.get("entry"),
-    "sl": adv.get("sl"),
-    "tp": adv.get("tp"),
-    "rr": adv.get("rr"),
-}
-    
+    # Otherwise keep previous frozen signal
+else:
+    new_adv = st.session_state.frozen_signal
+
+adv = st.session_state.frozen_signal or new_adv    
 
 # ----- EXPIRY CHECK -----
 candles_passed = (
@@ -188,9 +187,10 @@ with col2:
 
 st.divider()
 
-st.caption(
-    f"🔒 Signal locked on candle close @ {st.session_state.last_candle_time.strftime('%H:%M:%S')}"
-)
+if st.session_state.signal_decision_time:
+    st.caption(
+        f"🔒 Signal locked @ {st.session_state.signal_decision_time.strftime('%H:%M:%S')}"
+    )
 
 # ================= TRADE RECAP =================
 st.subheader("📘 Trade Recap")
