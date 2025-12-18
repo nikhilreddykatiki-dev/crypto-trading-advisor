@@ -163,37 +163,92 @@ if candles_passed >= SIGNAL_VALID_CANDLES:
 if adv["action"].startswith("SIGNAL EXPIRED") and st.session_state.last_signal_snapshot:
     st.session_state.last_signal_snapshot["action"] = "EXPIRED"
 
-# ================= ADVISOR PANEL (TOP) =================
-st.subheader("🧠 Advisor Status")
-if adv["action"].startswith("SIGNAL EXPIRED"):
-    st.warning("⏱️ Signal expired — do NOT enter late")
+# ----- EXPIRY CHECK (STATE-SAFE) -----
+candles_passed = (
+    df.index[-2] - st.session_state.signal_candle_index
+    if st.session_state.signal_candle_index is not None
+    else 0
+)
+
+# If signal expired, update the FROZEN signal (single source of truth)
+if candles_passed >= SIGNAL_VALID_CANDLES:
+    st.session_state.frozen_signal = {
+        "action": "SIGNAL EXPIRED — WAIT",
+        "notes": [
+            "Signal expired after candle close",
+            "Waiting for new setup"
+        ]
+    }
+
+# Always read adv from frozen state
+adv = st.session_state.frozen_signal or {"action": "WAIT", "notes": []}
+
+# Update recap status if expired
+if (
+    adv["action"].startswith("SIGNAL EXPIRED")
+    and st.session_state.last_signal_snapshot
+):
+    st.session_state.last_signal_snapshot["action"] = "EXPIRED"
 
 
-col1, col2 = st.columns([1, 3])
+# ================= STATUS BANNER =================
+st.markdown("### 🧠 Advisor Status")
 
-with col1:
-    action = adv["action"]
+action = adv["action"]
 
-    if action.startswith("TAKE"):
-        st.success(action)
-    elif action.startswith("NO TRADE"):
-        st.error(action)
-    else:
-        st.warning(action)
-
-with col2:
-    for note in adv["notes"]:
-        st.write("•", note)
-
-st.divider()
-
-if st.session_state.signal_decision_time:
-    st.caption(
-        f"🔒 Signal locked @ {st.session_state.signal_decision_time.strftime('%H:%M:%S')}"
+if action.startswith("TAKE"):
+    st.markdown(
+        f"""
+        <div style="
+            background-color:#e6fffa;
+            border-left:6px solid #2ecc71;
+            padding:16px;
+            border-radius:8px;
+            font-size:18px;
+            font-weight:600;">
+            {action}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+elif action.startswith("NO TRADE") or action.startswith("SIGNAL EXPIRED"):
+    st.markdown(
+        f"""
+        <div style="
+            background-color:#fff5f5;
+            border-left:6px solid #e74c3c;
+            padding:16px;
+            border-radius:8px;
+            font-size:18px;
+            font-weight:600;">
+            {action}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+else:
+    st.markdown(
+        f"""
+        <div style="
+            background-color:#fffbea;
+            border-left:6px solid #f1c40f;
+            padding:16px;
+            border-radius:8px;
+            font-size:18px;
+            font-weight:600;">
+            {action}
+        </div>
+        """,
+        unsafe_allow_html=True
     )
 
+st.caption(
+    f"🔒 Signal locked @ {st.session_state.signal_decision_time.strftime('%H:%M:%S')}"
+    if st.session_state.signal_decision_time else ""
+)
+
 # ================= TRADE RECAP =================
-st.subheader("📘 Trade Recap")
+st.markdown("### 📘 Trade Recap")
 
 snap = st.session_state.last_signal_snapshot
 
@@ -316,9 +371,9 @@ if adv["action"].startswith("NO TRADE"):
 
 # ================= FINAL CHART RENDER =================
 fig.update_layout(
-    height=600,
-    margin=dict(l=20, r=20, t=30, b=20),
-    xaxis_rangeslider_visible=False
+    height=620,
+    margin=dict(l=20, r=20, t=40, b=20),
+    plot_bgcolor="#ffffff"
 )
 
 st.plotly_chart(fig, use_container_width=True)
