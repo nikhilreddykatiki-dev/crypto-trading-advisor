@@ -373,7 +373,6 @@ if adv["action"].startswith("NO TRADE"):
 fig.update_layout(
     height=620,
     margin=dict(l=20, r=20, t=40, b=20),
-    plot_bgcolor="#ffffff"
 )
 
 st.plotly_chart(fig, use_container_width=True)
