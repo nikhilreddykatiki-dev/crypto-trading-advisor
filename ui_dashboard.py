@@ -102,6 +102,9 @@ if "last_candle_time" not in st.session_state:
 if "frozen_signal" not in st.session_state:
     st.session_state.frozen_signal = None
 
+if "last_signal_snapshot" not in st.session_state:
+    st.session_state.last_signal_snapshot = None
+
 if "signal_candle_index" not in st.session_state:
     st.session_state.signal_candle_index = None
 
@@ -122,9 +125,22 @@ if st.session_state.last_candle_time != last_closed_time:
     st.session_state.frozen_signal = adv
     st.session_state.last_candle_time = last_closed_time
     st.session_state.signal_candle_index = current_candle_index
-
+    
 else:
     adv = st.session_state.frozen_signal
+
+# Save snapshot for recap
+st.session_state.last_signal_snapshot = {
+    "time": st.session_state.last_candle_time,
+    "symbol": symbol,
+    "timeframe": ltf_interval,
+    "action": adv["action"],
+    "entry": adv.get("entry"),
+    "sl": adv.get("sl"),
+    "tp": adv.get("tp"),
+    "rr": adv.get("rr"),
+}
+    
 
 # ----- EXPIRY CHECK -----
 candles_passed = (
@@ -138,6 +154,9 @@ if candles_passed >= SIGNAL_VALID_CANDLES:
         "action": "SIGNAL EXPIRED — WAIT",
         "notes": ["Signal expired after candle close", "Waiting for new setup"]
     }
+# Update recap status if expired
+if adv["action"].startswith("SIGNAL EXPIRED") and st.session_state.last_signal_snapshot:
+    st.session_state.last_signal_snapshot["action"] = "EXPIRED"
 
 # ================= ADVISOR PANEL (TOP) =================
 st.subheader("🧠 Advisor Status")
@@ -167,6 +186,39 @@ st.caption(
     f"🔒 Signal locked on candle close @ {st.session_state.last_candle_time.strftime('%H:%M:%S')}"
 )
 
+# ================= TRADE RECAP =================
+st.subheader("📘 Trade Recap")
+
+snap = st.session_state.last_signal_snapshot
+
+if snap:
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.write("**Symbol**:", snap["symbol"])
+        st.write("**Timeframe**:", snap["timeframe"])
+        st.write("**Time**:", snap["time"].strftime("%Y-%m-%d %H:%M:%S"))
+
+    with col2:
+        st.write("**Action**:", snap["action"])
+        if snap["entry"]:
+            st.write("**Entry**:", snap["entry"])
+            st.write("**SL**:", snap["sl"])
+            st.write("**TP**:", snap["tp"])
+
+    with col3:
+        if snap["rr"]:
+            st.metric("RR", snap["rr"])
+
+        if snap["action"] == "EXPIRED":
+            st.warning("⏱️ Signal expired")
+        elif snap["action"].startswith("TAKE"):
+            st.success("✅ Signal was valid")
+        else:
+            st.info("ℹ️ No trade taken")
+
+else:
+    st.info("No signal recorded yet")
 
 # ================= CHART =================
 fig = go.Figure()
