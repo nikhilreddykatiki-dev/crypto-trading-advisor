@@ -8,6 +8,9 @@ from strategy.context import build_context, build_htf_context
 from strategy.advisor import advisor
 from utils.journal import log_trade
 
+# ================= SIGNAL SETTINGS =================
+SIGNAL_VALID_CANDLES = 1  # valid for 1 closed candle
+
 def get_last_closed_candle_time(df):
     """
     Returns the timestamp of the last fully closed candle.
@@ -99,26 +102,48 @@ if "last_candle_time" not in st.session_state:
 if "frozen_signal" not in st.session_state:
     st.session_state.frozen_signal = None
 
+if "signal_candle_index" not in st.session_state:
+    st.session_state.signal_candle_index = None
+
 # ================= CONTEXT & ADVISOR =================
 ctx = build_context(df)
 htf = build_htf_context(htf_df)
 
-# ================= SIGNAL FREEZE LOGIC =================
+# ================= SIGNAL FREEZE + EXPIRY =================
 last_closed_time = get_last_closed_candle_time(df)
 
-# Only compute a NEW signal when a new candle closes
+# Index of the last closed candle
+current_candle_index = df.index[-2]
+
+# New candle closed → compute new signal
 if st.session_state.last_candle_time != last_closed_time:
     adv = advisor(ctx, htf, min_rr=min_rr)
 
     st.session_state.frozen_signal = adv
     st.session_state.last_candle_time = last_closed_time
+    st.session_state.signal_candle_index = current_candle_index
+
 else:
     adv = st.session_state.frozen_signal
 
-st.info(f"⏳ Next candle closes in {mm:02d}:{ss:02d}")
+# ----- EXPIRY CHECK -----
+candles_passed = (
+    df.index[-2] - st.session_state.signal_candle_index
+    if st.session_state.signal_candle_index is not None
+    else 0
+)
+
+if candles_passed >= SIGNAL_VALID_CANDLES:
+    adv = {
+        "action": "SIGNAL EXPIRED — WAIT",
+        "notes": ["Signal expired after candle close", "Waiting for new setup"]
+    }
 
 # ================= ADVISOR PANEL (TOP) =================
 st.subheader("🧠 Advisor Status")
+if adv["action"].startswith("SIGNAL EXPIRED"):
+    st.warning("⏱️ Signal expired — do NOT enter late")
+
 
 col1, col2 = st.columns([1, 3])
 
