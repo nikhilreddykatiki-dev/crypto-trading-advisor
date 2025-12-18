@@ -2,6 +2,7 @@ import requests
 import pandas as pd
 import streamlit as st
 from datetime import datetime
+import pytz
 
 def fetch_cryptocompare_candles(symbol="BTC", interval="3m", limit=200):
     TF_MAP = {
@@ -32,7 +33,13 @@ def fetch_cryptocompare_candles(symbol="BTC", interval="3m", limit=200):
         rows = data["Data"]["Data"]
 
         df = pd.DataFrame(rows)
-        df["time"] = pd.to_datetime(df["time"], unit="s")
+        # Convert to UTC first
+        df["time"] = pd.to_datetime(df["time"], unit="s", utc=True)
+
+        # Convert to IST for display
+        ist = pytz.timezone("Asia/Kolkata")
+        df["time"] = df["time"].dt.tz_convert(ist)
+
         df["close"] = df["close"].astype(float)
 
         return df[["time", "open", "high", "low", "close", "volumefrom"]]
