@@ -1,7 +1,7 @@
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
 import plotly.graph_objects as go
-
+from datetime import datetime, timezone
 from api.market_data import fetch_cryptocompare_candles
 from indicators.ema import add_ema
 from strategy.context import build_context, build_htf_context
@@ -14,6 +14,25 @@ def get_last_closed_candle_time(df):
     """
     return df.iloc[-2]["time"]
 
+def candle_close_countdown(df, interval):
+    """
+    Returns seconds remaining until the next candle close.
+    """
+    TF_SECONDS = {
+        "1m": 60,
+        "3m": 180,
+        "5m": 300,
+        "15m": 900
+    }
+
+    last_closed = df.iloc[-2]["time"].replace(tzinfo=timezone.utc)
+    tf_sec = TF_SECONDS[interval]
+
+    next_close = last_closed.timestamp() + tf_sec
+    now = datetime.now(timezone.utc).timestamp()
+
+    remaining = int(next_close - now)
+    return max(0, remaining)
 
 # ================= PAGE CONFIG =================
 st.set_page_config(
@@ -59,6 +78,13 @@ htf_df = fetch_cryptocompare_candles(symbol, "15m")
 if df is None or htf_df is None:
     st.stop()
 
+# ================= CANDLE COUNTDOWN =================
+remaining_sec = candle_close_countdown(df, ltf_interval)
+
+mm = remaining_sec // 60
+ss = remaining_sec % 60
+
+
 # ================= INDICATORS =================
 df = add_ema(df)
 htf_df = add_ema(htf_df)
@@ -86,6 +112,7 @@ if st.session_state.last_candle_time != last_closed_time:
 else:
     adv = st.session_state.frozen_signal
 
+st.info(f"⏳ Next candle closes in {mm:02d}:{ss:02d}")
 
 # ================= ADVISOR PANEL (TOP) =================
 st.subheader("🧠 Advisor Status")
