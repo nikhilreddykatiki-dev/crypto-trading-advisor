@@ -16,7 +16,8 @@ def get_last_closed_candle_time(df):
 
 def candle_close_countdown(df, interval):
     """
-    Returns seconds remaining until the next candle close.
+    Countdown until the currently forming candle closes.
+    Robust for CryptoCompare timestamps.
     """
     TF_SECONDS = {
         "1m": 60,
@@ -25,13 +26,15 @@ def candle_close_countdown(df, interval):
         "15m": 900
     }
 
-    last_closed = df.iloc[-2]["time"].replace(tzinfo=timezone.utc)
     tf_sec = TF_SECONDS[interval]
 
-    next_close = last_closed.timestamp() + tf_sec
-    now = datetime.now(timezone.utc).timestamp()
+    # Last candle time from API (this is the OPEN time of the current candle)
+    current_candle_open = df.iloc[-1]["time"].replace(tzinfo=timezone.utc)
 
-    remaining = int(next_close - now)
+    next_close_ts = current_candle_open.timestamp() + tf_sec
+    now_ts = datetime.now(timezone.utc).timestamp()
+
+    remaining = int(next_close_ts - now_ts)
     return max(0, remaining)
 
 # ================= PAGE CONFIG =================
