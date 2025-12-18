@@ -108,6 +108,9 @@ if "last_signal_snapshot" not in st.session_state:
 if "signal_candle_index" not in st.session_state:
     st.session_state.signal_candle_index = None
 
+if "signal_decision_time" not in st.session_state:
+    st.session_state.signal_decision_time = None
+
 # ================= CONTEXT & ADVISOR =================
 ctx = build_context(df)
 htf = build_htf_context(htf_df)
@@ -125,6 +128,9 @@ if st.session_state.last_candle_time != last_closed_time:
     st.session_state.frozen_signal = adv
     st.session_state.last_candle_time = last_closed_time
     st.session_state.signal_candle_index = current_candle_index
+
+    # 🔒 Lock signal decision time ONCE
+    st.session_state.signal_decision_time = last_closed_time
     
 else:
     adv = st.session_state.frozen_signal
