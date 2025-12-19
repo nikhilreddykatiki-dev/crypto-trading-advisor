@@ -1,110 +1,66 @@
 import streamlit as st
 import plotly.graph_objects as go
-from indicators.ema import add_ema_columns
+
 from api.market_data import fetch_cryptocompare_candles
-from strategy.context import build_context, build_htf_context
+from indicators.ema import add_ema
+from strategy.context import build_context
 from strategy.advisor import advisor
 
+st.set_page_config(page_title="Crypto Trading Advisor", layout="wide")
 
 # ================= CONFIG =================
-st.set_page_config(
-    page_title="Crypto Trading Advisor",
-    layout="wide"
-)
-
-AUTO_REFRESH_SECONDS = 5
-
-
-# ================= SIDEBAR =================
-st.sidebar.title("⚙️ Controls")
-
-symbol = st.sidebar.selectbox("Symbol", ["BTC"])
-ltf_interval = st.sidebar.selectbox("Lower Timeframe", ["1m", "3m", "5m"], index=1)
-min_rr = st.sidebar.slider("Minimum RR", 1.5, 3.0, 2.0, 0.1)
-
+SYMBOL = "BTC"
+TIMEFRAME = "3m"
+MIN_RR = 2.0
+REFRESH_SECONDS = 5
 
 # ================= DATA =================
-
-
-df = fetch_cryptocompare_candles(symbol, ltf_interval)
-
-# ✅ ADD THIS LINE
-df = add_ema_columns(df)
+df = fetch_cryptocompare_candles(SYMBOL, TIMEFRAME)
+df = add_ema(df)
 
 ctx = build_context(df)
-htf = build_htf_context(symbol)
+adv = advisor(ctx, min_rr=MIN_RR)
 
+# ================= UI =================
+st.title("📊 Crypto Trading Advisor")
+st.caption(f"{SYMBOL} · {TIMEFRAME} · Auto refresh {REFRESH_SECONDS}s")
 
-# ================= ADVISOR (PURE) =================
-adv = advisor(ctx, htf, min_rr=min_rr)
-
-
-# ================= HEADER =================
-st.title("📈 Crypto Trading Advisor")
-st.caption(f"LTF: {ltf_interval} · Auto-refresh every {AUTO_REFRESH_SECONDS}s")
-
-
-# ================= ACTION =================
 st.subheader("🧠 Advisor Decision")
 
 if adv["action"].startswith("TAKE"):
     st.success(adv["action"])
-elif adv["action"] == "WAIT":
-    st.warning("WAIT")
 else:
-    st.info(adv["action"])
+    st.warning("WAIT")
 
-
-# ================= NOTES =================
 st.subheader("📌 Advisor Notes")
-
-for note in adv["notes"]:
-    st.markdown(f"- {note}")
-
+for n in adv["notes"]:
+    st.markdown(f"- {n}")
 
 # ================= CHART =================
 fig = go.Figure()
 
-fig.add_trace(go.Candlestick(
+fig.add_candlestick(
     x=df["time"],
     open=df["open"],
     high=df["high"],
     low=df["low"],
     close=df["close"],
     name="Price"
-))
+)
 
-fig.add_trace(go.Scatter(
-    x=df["time"],
-    y=df["ema_fast"],
-    line=dict(color="orange"),
-    name="EMA Fast"
-))
+fig.add_scatter(x=df["time"], y=df["ema_fast"], name="EMA 21")
+fig.add_scatter(x=df["time"], y=df["ema_slow"], name="EMA 34")
 
-fig.add_trace(go.Scatter(
-    x=df["time"],
-    y=df["ema_slow"],
-    line=dict(color="blue"),
-    name="EMA Slow"
-))
-
-# Entry / SL / TP (ONLY IF TAKE)
 if adv["action"].startswith("TAKE"):
-    fig.add_hline(y=adv["entry"], line_dash="dot", annotation_text="Entry")
-    fig.add_hline(y=adv["sl"], line_dash="dash", line_color="red", annotation_text="SL")
-    fig.add_hline(y=adv["tp"], line_dash="dash", line_color="green", annotation_text="TP")
+    fig.add_hline(y=adv["entry"], line_color="blue", annotation_text="Entry")
+    fig.add_hline(y=adv["sl"], line_color="red", annotation_text="SL")
+    fig.add_hline(y=adv["tp"], line_color="green", annotation_text="TP")
 
 fig.update_layout(
     height=600,
-    margin=dict(l=20, r=20, t=40, b=20),
     xaxis_rangeslider_visible=False
 )
 
 st.plotly_chart(fig, use_container_width=True)
 
-
-# ================= AUTO REFRESH =================
-st.experimental_autorefresh(
-    interval=AUTO_REFRESH_SECONDS * 1000,
-    key="auto_refresh"
-)
+st.experimental_autorefresh(interval=REFRESH_SECONDS * 1000)

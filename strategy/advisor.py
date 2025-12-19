@@ -1,49 +1,50 @@
-from strategy.risk import calculate_trade
-
-def advisor(ctx, htf, min_rr=2.0):
+def advisor(ctx, min_rr=2.0):
     notes = []
 
-    # 1️⃣ HTF conflict
-    if ctx["trend"] != htf["htf_trend"]:
-        notes.append(f"HTF ({htf['htf_trend'].upper()}) is in control")
-        notes.append("Lower timeframe is against HTF")
-        return {
-            "action": "NO TRADE — HTF CONFLICT",
-            "notes": notes
-        }
+    if ctx["trend"] == "bullish":
+        bias = "LONG"
+    else:
+        bias = "SHORT"
 
-    # 2️⃣ No pullback
+    notes.append(f"Trend bias: {bias}")
+
     if not ctx["near_ema"]:
-        notes.append("HTF and LTF aligned")
-        notes.append("Price not in EMA pullback zone")
+        notes.append("Price not near EMA pullback zone")
         return {
-            "action": "WAIT — NO PULLBACK",
+            "action": "WAIT",
             "notes": notes
         }
 
-    # 3️⃣ Direction
-    direction = "LONG" if ctx["trend"] == "bullish" else "SHORT"
-    sl, tp, rr = calculate_trade(ctx["last_price"], direction)
+    if ctx["momentum"] == "weakening":
+        notes.append("Momentum weakening near EMA")
+    else:
+        notes.append("Momentum supportive")
 
-    # 4️⃣ RR filter
+    entry = ctx["price"]
+
+    if bias == "LONG":
+        sl = entry * 0.995
+        tp = entry * 1.01
+    else:
+        sl = entry * 1.005
+        tp = entry * 0.99
+
+    rr = abs(tp - entry) / abs(entry - sl)
+
+    notes.append(f"RR ≈ {round(rr,2)}")
+
     if rr < min_rr:
-        notes.append("Valid pullback detected")
-        notes.append(f"RR too low ({rr} < {min_rr})")
+        notes.append("RR below acceptable threshold")
         return {
-            "action": "WAIT — RR TOO LOW",
+            "action": "WAIT",
             "notes": notes
         }
-
-    # 5️⃣ Valid trade
-    notes.append("HTF and LTF aligned")
-    notes.append("Price in pullback zone")
-    notes.append(f"RR acceptable ({rr})")
 
     return {
-        "action": f"TAKE {direction}",
-        "entry": ctx["last_price"],
-        "sl": sl,
-        "tp": tp,
-        "rr": rr,
-        "notes": notes
+        "action": f"TAKE {bias}",
+        "notes": notes,
+        "entry": round(entry, 2),
+        "sl": round(sl, 2),
+        "tp": round(tp, 2),
+        "rr": round(rr, 2)
     }
