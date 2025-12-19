@@ -24,11 +24,12 @@ min_rr = st.sidebar.slider("Minimum RR", 1.5, 3.0, 2.0, 0.1)
 
 
 # ================= DATA =================
+from indicators.ema import add_ema_columns
+
 df = fetch_cryptocompare_candles(symbol, ltf_interval)
 
-if df is None or df.empty:
-    st.error("Market data unavailable")
-    st.stop()
+# ✅ ADD THIS LINE
+df = add_ema_columns(df)
 
 ctx = build_context(df)
 htf = build_htf_context(symbol)
