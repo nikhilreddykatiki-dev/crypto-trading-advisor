@@ -10,6 +10,10 @@ st.set_page_config(page_title="Crypto Trading Advisor", layout="wide")
 # Auto refresh every 5 seconds
 st_autorefresh(interval=5000, key="refresh")
 
+if "locked_trade" not in st.session_state:
+    st.session_state.locked_trade = None
+
+
 # ================= CONFIG =================
 SYMBOL = "BTC"
 TIMEFRAME = "3m"
@@ -43,6 +47,27 @@ else:
 st.subheader("📌 Advisor Notes")
 for n in adv["notes"]:
     st.markdown(f"- {n}")
+
+if adv["action"].startswith("TAKE"):
+    if st.button("🔒 Lock this trade"):
+        st.session_state.locked_trade = adv.copy()
+
+if st.session_state.locked_trade:
+    lt = st.session_state.locked_trade
+
+    st.subheader("🔐 Locked Trade")
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Entry", lt["entry"])
+    col2.metric("Stop Loss", lt["sl"])
+    col3.metric("Take Profit", lt["tp"])
+
+    st.caption("These values are frozen and will not change")
+
+if st.session_state.locked_trade:
+    if st.button("❌ Clear locked trade"):
+        st.session_state.locked_trade = None
+
 
 # ================= TRADE LEVELS =================
 if adv["action"].startswith("TAKE"):
