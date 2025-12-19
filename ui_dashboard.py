@@ -39,10 +39,19 @@ st.caption(f"{SYMBOL} · {TIMEFRAME} · Auto refresh {REFRESH_SECONDS}s")
 
 st.subheader("🧠 Advisor Decision")
 
-if adv["action"].startswith("TAKE"):
-    st.success(adv["action"])
+action = adv["action"]
+
+if action == "TAKE LONG":
+    st.success("TAKE LONG 🟢")
+
+elif action == "TAKE SHORT":
+    st.error("TAKE SHORT 🔴")
+
+elif action == "WAIT":
+    st.warning("WAIT 🟡")
+
 else:
-    st.warning("WAIT")
+    st.info(action)
 
 st.subheader("📌 Advisor Notes")
 for n in adv["notes"]:
