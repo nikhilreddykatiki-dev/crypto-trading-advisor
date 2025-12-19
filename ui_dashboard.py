@@ -1,12 +1,14 @@
 import streamlit as st
 import plotly.graph_objects as go
-
+from streamlit_autorefresh import st_autorefresh
 from api.market_data import fetch_cryptocompare_candles
 from indicators.ema import add_ema
 from strategy.context import build_context
 from strategy.advisor import advisor
 
 st.set_page_config(page_title="Crypto Trading Advisor", layout="wide")
+# Auto refresh every 5 seconds
+st_autorefresh(interval=5000, key="refresh")
 
 # ================= CONFIG =================
 SYMBOL = "BTC"
@@ -19,6 +21,13 @@ df = add_ema(df)
 
 ctx = build_context(df)
 adv = advisor(ctx)
+
+col1, col2, col3 = st.columns(3)
+
+col1.metric("Live Price", ctx["price"])
+col2.metric("EMA 21", ctx["ema_fast"])
+col3.metric("EMA 34", ctx["ema_slow"])
+
 
 # ================= UI =================
 st.title("📊 Crypto Trading Advisor")
