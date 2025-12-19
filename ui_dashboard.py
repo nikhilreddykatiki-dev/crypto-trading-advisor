@@ -44,6 +44,32 @@ st.subheader("📌 Advisor Notes")
 for n in adv["notes"]:
     st.markdown(f"- {n}")
 
+# ================= TRADE LEVELS =================
+if adv["action"].startswith("TAKE"):
+    st.subheader("🎯 Trade Levels")
+
+    col1, col2, col3 = st.columns(3)
+
+    entry = adv["entry"]
+    sl = adv["sl"]
+    tp = adv["tp"]
+
+    with col1:
+        st.metric("Entry", entry)
+
+    with col2:
+        st.metric("Stop Loss", sl)
+
+    with col3:
+        st.metric("Take Profit", tp)
+
+    # Optional: distance info (very useful)
+    st.caption(
+        f"Risk: {abs(entry - sl):.0f} points | "
+        f"Reward: {abs(tp - entry):.0f} points"
+    )
+
+
 # ================= CHART =================
 fig = go.Figure()
 
