@@ -1,6 +1,7 @@
-def advisor(ctx, min_rr=2.0):
+def advisor(ctx):
     notes = []
 
+    # Trend bias
     if ctx["trend"] == "bullish":
         bias = "LONG"
     else:
@@ -8,6 +9,7 @@ def advisor(ctx, min_rr=2.0):
 
     notes.append(f"Trend bias: {bias}")
 
+    # Pullback check
     if not ctx["near_ema"]:
         notes.append("Price not near EMA pullback zone")
         return {
@@ -15,6 +17,7 @@ def advisor(ctx, min_rr=2.0):
             "notes": notes
         }
 
+    # Momentum context
     if ctx["momentum"] == "weakening":
         notes.append("Momentum weakening near EMA")
     else:
@@ -22,6 +25,7 @@ def advisor(ctx, min_rr=2.0):
 
     entry = ctx["price"]
 
+    # Simple structure-based SL/TP (no RR logic)
     if bias == "LONG":
         sl = entry * 0.995
         tp = entry * 1.01
@@ -29,22 +33,12 @@ def advisor(ctx, min_rr=2.0):
         sl = entry * 1.005
         tp = entry * 0.99
 
-    rr = abs(tp - entry) / abs(entry - sl)
-
-    notes.append(f"RR ≈ {round(rr,2)}")
-
-    if rr < min_rr:
-        notes.append("RR below acceptable threshold")
-        return {
-            "action": "WAIT",
-            "notes": notes
-        }
+    notes.append("Conditions met for pullback continuation")
 
     return {
         "action": f"TAKE {bias}",
         "notes": notes,
         "entry": round(entry, 2),
         "sl": round(sl, 2),
-        "tp": round(tp, 2),
-        "rr": round(rr, 2)
+        "tp": round(tp, 2)
     }

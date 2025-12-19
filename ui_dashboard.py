@@ -11,7 +11,6 @@ st.set_page_config(page_title="Crypto Trading Advisor", layout="wide")
 # ================= CONFIG =================
 SYMBOL = "BTC"
 TIMEFRAME = "3m"
-MIN_RR = 2.0
 REFRESH_SECONDS = 5
 
 # ================= DATA =================
@@ -19,7 +18,7 @@ df = fetch_cryptocompare_candles(SYMBOL, TIMEFRAME)
 df = add_ema(df)
 
 ctx = build_context(df)
-adv = advisor(ctx, min_rr=MIN_RR)
+adv = advisor(ctx)
 
 # ================= UI =================
 st.title("📊 Crypto Trading Advisor")
